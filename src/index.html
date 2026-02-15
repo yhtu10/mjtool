@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>馬尼馬上來！新年快樂</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                brand: '#7149CE', 
+                mjRed: '#A62121', 
+                mjGray: '#CBC5C1',
+                bgLight: '#F8F6F2',
+                courseBlue: '#1E3A8A',
+                coursePurple: '#4C1D95'
+              },
+              borderRadius: { '4xl': '2rem', '5xl': '2.5rem' }
+            }
+          }
+        }
+    </script>
+    
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #F8F6F2; color: #1A161F; -webkit-font-smoothing: antialiased; }
+        .card-shadow { box-shadow: 0 10px 40px -10px rgba(0,0,0,0.06); }
+        [v-cloak] { display: none; }
+        .active-tab { color: #7149CE !important; border-bottom: 3px solid #7149CE; }
+        
+        .tile-v { width: 14px; height: 22px; border-radius: 2px; background-color: #CBC5C1; transition: all 0.3s ease; }
+        .tile-h { width: 22px; height: 14px; border-radius: 2px; background-color: #CBC5C1; transition: all 0.3s ease; }
+        
+        .tile-active { 
+            background-color: #A62121 !important; 
+            box-shadow: 0 0 20px rgba(166, 33, 33, 0.7);
+            transform: scale(1.1);
+            z-index: 20;
+        }
+
+        .hand-tile {
+            width: 44px; height: 58px; background: white; border-radius: 6px;
+            border: 2px solid #E5E7EB; box-shadow: 0 3px 0 #D1D5DB;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1.3rem; cursor: pointer; transition: all 0.1s;
+        }
+        .hand-tile.active { border-color: #7149CE; color: #7149CE; background: #F5F3FF; box-shadow: 0 3px 0 #7149CE; }
+        
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="safe-area-inset-bottom">
+
+    <div id="app" v-cloak class="max-w-md mx-auto min-h-screen flex flex-col bg-white">
+        
+        <!-- Header -->
+        <header class="bg-white px-6 pt-6 pb-2 sticky top-0 z-[60] shadow-sm border-b border-gray-100">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-[22px] font-black text-brand tracking-tighter">馬尼馬上來！</h1>
+                <div class="bg-gray-100 px-3 py-1 rounded-full text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">新年快樂</div>
+            </div>
+            <nav class="flex">
+                <button v-for="(t, i) in tabs" :key="i" @click="currentTab = i"
+                    :class="['flex-1 py-3 text-[15px] font-bold transition-all text-center tracking-normal', currentTab === i ? 'active-tab' : 'text-gray-400']">
+                    {{ t }}
+                </button>
+            </nav>
+        </header>
+
+        <!-- Main Scroll Area -->
+        <main class="flex-1 overflow-y-auto">
+            
+            <!-- [Tab 0: 視覺化抓位] -->
+            <section v-if="currentTab === 0" class="p-5 space-y-8 animate-in fade-in transition-all">
+                <div class="text-center space-y-6 pt-4">
+                    <p class="text-[14px] font-bold text-gray-400">骰子總和 ( 3~18 )</p>
+                    <div class="flex justify-center items-center gap-4">
+                        <div class="w-44 bg-white rounded-[2rem] h-24 flex items-center justify-center border-2 border-gray-100 shadow-sm">
+                            <input type="number" v-model.number="grabDice" placeholder="--"
+                                class="w-full text-center font-black text-6xl text-gray-800 bg-transparent outline-none">
+                        </div>
+                        <button @click="rollGrabDice" class="bg-brand text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-lg active:scale-90 transition-all">🎲</button>
+                    </div>
+
+                    <div class="min-h-[40px] flex items-center justify-center">
+                        <div v-if="isValidDice" class="animate-in slide-in-from-bottom duration-300">
+                            <h2 class="text-[19px] font-black text-mjRed tracking-tight">
+                                抓 {{ grabInstruction.first.side }} {{ grabDice === 18 ? '右邊' : grabInstruction.directionText }}數來第 {{ grabInstruction.first.num }}{{ grabDice === 18 ? '' : ' & ' + grabInstruction.second.side + ' 第 ' + grabInstruction.second.num }} 墩
+                            </h2>
+                            <p v-if="grabDice !== 18" class="text-[14px] font-bold text-gray-400 mt-1">上手口訣：抓 2 剩 {{ grabInstruction.mnemonic }}</p>
+                        </div>
+                        <div v-else-if="grabDice !== null" class="text-mjRed text-xs font-black">❗ 請輸入 3 至 18 之間的點數</div>
+                        <div v-else class="text-gray-300 text-sm font-bold tracking-widest">等待點數輸入...</div>
+                    </div>
+                </div>
+
+                <!-- 牌桌視覺 -->
+                <div class="bg-white rounded-[3.5rem] aspect-square relative flex items-center justify-center p-4 shadow-sm border border-gray-100 overflow-hidden">
+                    <!-- 中央文字安全區 -->
+                    <div class="w-[60%] h-[60%] flex flex-col justify-between items-center pointer-events-none z-10 py-1">
+                        <div class="text-center">
+                            <div class="text-mjGray font-black text-[18px] leading-none mb-1">對家 👆</div>
+                            <div class="text-[10px] text-mjGray font-bold opacity-80">3花/西風 有台</div>
+                        </div>
+                        <div class="flex w-full justify-between items-center">
+                            <div class="text-center">
+                                <div class="text-mjGray font-black text-[18px] leading-none mb-1">👈 上家</div>
+                                <div class="text-[10px] text-mjGray font-bold opacity-80">4花/北風 有台</div>
+                            </div>
+                            <div class="w-[2px] h-10 bg-gray-100 rounded-full"></div>
+                            <div class="text-center">
+                                <div class="text-mjGray font-black text-[18px] leading-none mb-1">下家 👉</div>
+                                <div class="text-[10px] text-mjGray font-bold opacity-80">2花/南風 有台</div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-mjGray font-black text-[18px] leading-none mb-1">自己 👇</div>
+                            <div class="text-[10px] text-mjGray font-bold opacity-80">1花/東風 有台</div>
+                        </div>
+                    </div>
+
+                    <!-- 牌牆視覺 -->
+                    <div class="absolute top-5 flex gap-1"><div v-for="n in 18" :key="'t'+n" :class="['tile-v', isTargetPile('對家', n) ? 'tile-active' : '']"></div></div>
+                    <div class="absolute bottom-5 flex flex-row-reverse gap-1"><div v-for="n in 18" :key="'b'+n" :class="['tile-v', isTargetPile('自己', n) ? 'tile-active' : '']"></div></div>
+                    <div class="absolute left-5 flex flex-col-reverse gap-1"><div v-for="n in 18" :key="'l'+n" :class="['tile-h', isTargetPile('上家', n) ? 'tile-active' : '']"></div></div>
+                    <div class="absolute right-5 flex flex-col gap-1"><div v-for="n in 18" :key="'r'+n" :class="['tile-h', isTargetPile('下家', n) ? 'tile-active' : '']"></div></div>
+                </div>
+            </section>
+
+            <!-- [Tab 1: 獨立擲骰] -->
+            <section v-if="currentTab === 1" class="p-5 space-y-8 animate-in fade-in transition-all">
+                <div class="bg-white rounded-4xl p-8 card-shadow border border-gray-50 text-center space-y-8">
+                    <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">選擇骰子數量</p>
+                    <div class="flex justify-center gap-3">
+                        <button v-for="n in 5" :key="n" @click="diceCount = n"
+                            :class="['w-12 h-12 rounded-2xl font-black transition-all border-2', diceCount === n ? 'bg-brand border-brand text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-400']">
+                            {{ n }}
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-4 py-12 bg-gray-50 rounded-[3rem]">
+                        <div v-for="(val, idx) in rolledDice" :key="idx" 
+                            class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-4xl shadow-sm border-b-4 border-gray-100"
+                            :class="{'dice-roll': isRollingDice}">{{ val }}</div>
+                    </div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Total Result</p>
+                    <div class="text-7xl font-black text-brand tracking-tighter leading-none">{{ diceTotalSum }}</div>
+                    <button @click="rollIndependentDice" :disabled="isRollingDice" class="w-full bg-brand text-white py-5 rounded-3xl font-black text-[17px] active:scale-95 transition-all shadow-xl">
+                        {{ isRollingDice ? '正在擲骰...' : '開始擲骰' }}
+                    </button>
+                </div>
+            </section>
+
+            <!-- [Tab 2: 算台數工具] -->
+            <section v-if="currentTab === 2" class="p-5 pb-44 space-y-6 overflow-y-auto animate-in fade-in transition-all">
+                <div class="bg-white rounded-3xl p-5 card-shadow space-y-4 border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">1. 莊家與連莊</h3>
+                        <button @click="scoreData.isBanker = !scoreData.isBanker" 
+                            :class="['px-3 py-1 rounded-full text-[10px] font-black border transition-all', scoreData.isBanker ? 'bg-mjRed border-mjRed text-white shadow-md' : 'bg-white text-gray-400 border-gray-200']">莊家設定</button>
+                    </div>
+                    <div class="flex items-center gap-3" v-if="scoreData.isBanker">
+                        <span class="text-xs font-bold text-gray-500">連幾拉幾：</span>
+                        <div class="flex items-center bg-gray-100 rounded-xl p-1">
+                            <button @click="changeStreak(-1)" class="w-8 h-8 font-black">-</button>
+                            <span class="w-8 text-center font-black text-brand">{{ scoreData.streak }}</span>
+                            <button @click="changeStreak(1)" class="w-8 h-8 font-black">+</button>
+                        </div>
+                        <span class="text-xs font-black text-mjRed">共 {{ 1 + scoreData.streak * 2 }} 台</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
+                        <button v-for="item in scenarioItems" :key="item.name" @click="item.active = !item.active"
+                            :class="['px-4 py-2 rounded-full text-[11px] font-black border transition-all', item.active ? 'bg-brand border-brand text-white' : 'bg-white text-gray-400 border-gray-100']">
+                            {{ item.name }} +{{ item.tai }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl p-5 card-shadow space-y-4 border border-gray-100">
+                    <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">2. 牌型組成</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button v-for="item in structureItems" :key="item.name" @click="item.active = !item.active"
+                            :class="['p-3 rounded-2xl border-2 text-left transition-all', item.active ? 'border-brand bg-brand/5' : 'border-gray-50 bg-gray-50']">
+                            <div class="text-xs font-black text-gray-800">{{ item.name }}</div>
+                            <div class="text-[10px] text-brand font-black">{{ item.tai }} 台</div>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-between pt-2 border-t border-gray-50">
+                        <div v-for="t in dragonTiles" :key="t.name" @click="t.active = !t.active" :class="['hand-tile', t.active ? 'active' : '', t.color]">{{ t.name }}</div>
+                        <div v-for="w in windTiles" :key="w.name" @click="cycleWind(w)" :class="['hand-tile', w.state > 0 ? 'active' : '']">
+                            <span class="text-lg leading-none">{{ w.name }}</span>
+                            <span v-if="w.state > 0" class="text-[9px] mt-0.5 leading-none">{{ w.state === 1 ? '單' : '雙' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl p-6 border border-gray-100 space-y-4">
+                    <h4 class="text-[14px] font-black text-brand border-b pb-2">台數參考表</h4>
+                    <div class="grid grid-cols-1 gap-2 text-[13px] font-bold text-gray-600">
+                        <div class="flex justify-between"><span>莊家 / 連莊</span><span>1 / 2n+1 台</span></div>
+                        <div class="flex justify-between border-t pt-1"><span>門清 / 自摸</span><span>1 / 1 台</span></div>
+                        <div class="flex justify-between border-t pt-1"><span>平胡 / 碰碰胡</span><span>2 / 4 台</span></div>
+                        <div class="flex justify-between border-t pt-1"><span>湊一色 / 清一色</span><span>4 / 8 台</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- [Tab 3: 籌碼結算] -->
+            <section v-if="currentTab === 3" class="p-5 space-y-6 animate-in fade-in transition-all">
+                <div class="bg-white rounded-3xl p-7 card-shadow space-y-8 border border-gray-100">
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+                        <h2 class="text-sm font-black text-gray-900 uppercase">Settle Balance</h2>
+                        <span class="text-[10px] text-brand font-black px-2 py-1 bg-purple-50 rounded">可點擊名稱自定義</span>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-[12px] text-amber-700 font-bold leading-relaxed">
+                        💡 小撇步：若遊戲過程中籌碼不夠有自行加碼，可輸入減號 <span class="font-black">「-」</span> 進行負值計算。
+                    </div>
+                    <div class="grid grid-cols-2 gap-8 pt-4">
+                        <div v-for="(p, i) in settle.players" :key="i" class="space-y-2 group">
+                            <input type="text" v-model="p.name" class="w-full text-[11px] font-black text-brand bg-transparent outline-none border-b-2 border-gray-100 focus:border-brand py-1 uppercase">
+                            <input type="number" v-model.number="p.current" class="w-full text-4xl font-black text-gray-800 bg-transparent outline-none tracking-tighter">
+                        </div>
+                    </div>
+                    <div v-if="settleDiff !== 0" class="p-4 rounded-2xl bg-red-50 text-red-600 text-center text-xs font-black">
+                        ⚠️ 帳目誤差：{{ settleDiff }} 元 (應為 4000)
+                    </div>
+                </div>
+            </section>
+
+            <!-- 課程推廣區 -->
+            <section class="p-5 mt-10">
+                <div class="bg-gradient-to-br from-courseBlue to-coursePurple rounded-[2.5rem] p-8 shadow-2xl text-white relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h3 class="text-xl font-black leading-tight mb-6">
+                            這個工具是不是還不夠你使用？<br>
+                            立即加入 AI FIRST 行動力課程做一版自己的！
+                        </h3>
+                        <div class="bg-white/95 rounded-3xl p-6 mb-8 text-courseBlue shadow-xl">
+                            <p class="text-[15px] font-black mb-1">❮ AI First 行動力｜帶你降本、增效、創造新商機 ❯</p>
+                            <p class="text-[12px] mb-4 font-bold opacity-90 leading-relaxed text-gray-500">
+                                前 LINE Taiwan 總經理帶你從思考到行動、從解題到變現的 AI 商業實戰課
+                            </p>
+                            <div class="grid grid-cols-1 gap-2 pt-4 border-t border-courseBlue/10 text-[11px] font-bold opacity-80 leading-relaxed">
+                                <div class="flex items-start gap-2"><span>♟︎</span><span>最優化思維模型 » 結合思維判斷ＸAI 行動力</span></div>
+                                <div class="flex items-start gap-2"><span>♟︎</span><span>工具整合實作解題 » 善用 3A 思維對齊目標</span></div>
+                                <div class="flex items-start gap-2"><span>♟︎</span><span>零背景學會中文寫程式 » Vibe Coding 原型建構</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/10 rounded-2xl p-5 mb-8 border border-white/20 font-bold leading-relaxed">
+                            <p class="text-[13px] text-white">即日起至 2026/2/22 限時優惠低於 55 折</p>
+                            <p class="text-[13px] text-white">結帳輸入專屬優惠碼「 <span class="text-brandHighlight font-black text-lg">yhaifirst</span> 」</p>
+                            <p class="text-[13px] text-white">即可享有優惠價格再折 $500 元！</p>
+                        </div>
+
+                        <a href="https://hi.sat.cool/pdyQE" target="_blank" class="block w-full bg-purple-100 text-brand text-center py-5 rounded-2xl font-black text-[16px] active:scale-95 transition-all no-underline shadow-sm">
+                            展現行動力！把握優惠立即加入一起學習
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer / 免責聲明 -->
+            <footer class="p-10 text-center space-y-6">
+                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                    <p class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em] mb-3">Disclaimer</p>
+                    <p class="text-[11px] text-gray-500 font-bold leading-relaxed px-4">
+                        本工具僅為業餘練習以 AI 工具開發網頁之用途，不具備任何博弈、交易功能，請遵守當地法令，嚴禁用於非法用途。
+                    </p>
+                </div>
+                <p class="text-[10px] text-gray-300 font-bold uppercase tracking-widest opacity-40 pb-10">Designed for AI First Course Demo</p>
+            </footer>
+        </main>
+
+        <!-- 底部結算列 (Scoring Only) -->
+        <footer v-if="currentTab === 2" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 p-6 flex items-center justify-between shadow-[0_-15px_40px_rgba(0,0,0,0.08)] z-[70] rounded-t-[3rem]">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 leading-none">Total Scoring</span>
+                <div class="flex items-baseline leading-none">
+                    <span class="text-6xl font-black text-brand tracking-tighter">{{ finalTai }}</span>
+                    <span class="text-mjRed font-black text-sm ml-2 font-bold">台</span>
+                </div>
+            </div>
+            <button @click="resetScoring" class="px-8 py-4 bg-gray-100 text-gray-500 rounded-[1.5rem] font-black text-xs active:bg-gray-200 transition-all">Clear</button>
+        </footer>
+
+    </div>
+
+    <script>
+        const { createApp, reactive, computed, ref } = Vue;
+
+        createApp({
+            setup() {
+                const currentTab = ref(0);
+                const tabs = ["視覺抓位", "獨立擲骰", "算台數工具", "玩家結算"];
+                
+                // --- Tab 0 (Visual Grab) ---
+                const grabDice = ref(null);
+                const rollGrabDice = () => {
+                    let count = 0;
+                    const interval = setInterval(() => {
+                        grabDice.value = Math.floor(Math.random() * 16) + 3;
+                        count++;
+                        if (count > 10) clearInterval(interval);
+                    }, 50);
+                };
+                const isValidDice = computed(() => grabDice.value >= 3 && grabDice.value <= 18);
+                const grabInstruction = computed(() => {
+                    if (!isValidDice.value) return null;
+                    const dice = grabDice.value;
+                    const sideMapping = { 1: "自己", 2: "下家", 3: "對家", 0: "上家" };
+                    const grabOrder = ["自己", "上家", "對家", "下家"];
+                    
+                    // 修正 18 點邏輯
+                    if (dice === 18) {
+                        return {
+                            side: "自己",
+                            first: { side: "自己", num: "1, 2" },
+                            directionText: "右邊",
+                            mnemonic: 0
+                        };
+                    }
+                    
+                    const isRight = dice <= 8;
+                    const openSide = sideMapping[dice % 4];
+                    const openIdx = grabOrder.indexOf(openSide);
+                    const getPos = (num) => {
+                        let curIdx = openIdx;
+                        let rem = num;
+                        while (rem > 18) { rem -= 18; curIdx = (curIdx + 1) % 4; }
+                        return { side: grabOrder[curIdx], num: rem };
+                    };
+                    
+                    const first = getPos(dice + 1);
+                    const second = getPos(dice + 2);
+                    
+                    return {
+                        side: openSide,
+                        first: first,
+                        second: second,
+                        directionText: isRight ? '右邊' : '左邊',
+                        arrow: isRight ? '👉' : '👈',
+                        mnemonic: isRight ? dice : (18 - dice - 2)
+                    };
+                });
+                const isTargetPile = (side, n) => {
+                    if (!isValidDice.value) return false;
+                    const dice = grabDice.value;
+                    if (dice === 18) {
+                        return side === "自己" && (n === 1 || n === 2);
+                    }
+                    const { first, second } = grabInstruction.value;
+                    return (side === first.side && n === first.num) || (side === second.side && n === second.num);
+                };
+
+                // --- Tab 1 ---
+                const diceCount = ref(3);
+                const rolledDice = ref([1, 1, 1]);
+                const isRollingDice = ref(false);
+                const rollIndependentDice = () => {
+                    isRollingDice.value = true;
+                    let rolls = 0;
+                    const interval = setInterval(() => {
+                        rolledDice.value = Array.from({ length: diceCount.value }, () => Math.floor(Math.random() * 6) + 1);
+                        rolls++;
+                        if (rolls > 12) { clearInterval(interval); isRollingDice.value = false; }
+                    }, 60);
+                };
+                const diceTotalSum = computed(() => rolledDice.value.reduce((a, b) => a + b, 0));
+
+                // --- Tab 2 ---
+                const scoreData = reactive({ isBanker: false, streak: 0, flowers: 0, isCorrectFlower: false, isFlowerSet: false });
+                const scenarioItems = reactive([{ name: "自摸", tai: 1, active: false }, { name: "門清", tai: 1, active: false }, { name: "槓上開花", tai: 1, active: false }, { name: "搶槓", tai: 1, active: false }, { name: "天聽", tai: 16, active: false }]);
+                const structureItems = reactive([{ name: "平胡", tai: 2, active: false }, { name: "碰碰胡", tai: 4, active: false }, { name: "全求人", tai: 2, active: false }, { name: "清一色", tai: 8, active: false }, { name: "四暗刻", tai: 5, active: false }]);
+                const dragonTiles = reactive([{ name: "中", color: "text-mjRed", active: false }, { name: "發", color: "text-green-600", active: false }, { name: "白", color: "text-blue-500", active: false }]);
+                const windTiles = reactive([{ name: "東", state: 0 }, { name: "南", state: 0 }, { name: "西", state: 0 }, { name: "北", state: 0 }]);
+                const cycleWind = (w) => w.state = (w.state + 1) % 3;
+                const changeStreak = (val) => { const next = scoreData.streak + val; if(next >= 0) scoreData.streak = next; };
+                const changeFlowers = (val) => { const next = scoreData.flowers + val; if(next >= 0 && next <= 8) scoreData.flowers = next; };
+                const finalTai = computed(() => {
+                    let total = 0;
+                    if(scoreData.isBanker) total += (1 + scoreData.streak * 2);
+                    scenarioItems.forEach(i => { if(i.active) total += i.tai; });
+                    structureItems.forEach(i => { if(i.active) total += i.tai; });
+                    dragonTiles.forEach(i => { if(i.active) total += 1; });
+                    windTiles.forEach(i => total += i.state);
+                    total += scoreData.flowers;
+                    if(scoreData.isCorrectFlower) total += 1;
+                    if(scoreData.isFlowerSet) total += 2;
+                    return total;
+                });
+                const resetScoring = () => {
+                    Object.assign(scoreData, { isBanker: false, streak: 0, flowers: 0, isCorrectFlower: false, isFlowerSet: false });
+                    scenarioItems.forEach(i => i.active = false); structureItems.forEach(i => i.active = false);
+                    dragonTiles.forEach(i => i.active = false); windTiles.forEach(i => i.state = 0);
+                };
+
+                // --- Tab 3 ---
+                const settle = reactive({ initial: 1000, players: [{ name: "玩家 1", current: 1000 }, { name: "玩家 2", current: 1000 }, { name: "玩家 3", current: 1000 }, { name: "玩家 4", current: 1000 }] });
+                const settleDiff = computed(() => settle.players.reduce((acc, p) => acc + (p.current || 0), 0) - (settle.initial * 4));
+                const isSettleBalanced = computed(() => settleDiff.value === 0);
+                const hasResult = computed(() => settle.players.some(p => p.current !== settle.initial));
+                const paymentInstructions = computed(() => {
+                    if (!isSettleBalanced.value) return [];
+                    let balances = settle.players.map(p => ({ name: p.name, net: p.current - settle.initial }));
+                    let winners = balances.filter(b => b.net > 0).sort((a, b) => b.net - a.net);
+                    let losers = balances.filter(b => b.net < 0).sort((a, b) => a.net - b.net);
+                    let moves = []; let lIdx = 0, wIdx = 0;
+                    while (lIdx < losers.length && wIdx < winners.length) {
+                        let loser = losers[lIdx], winner = winners[wIdx];
+                        let amount = Math.min(Math.abs(loser.net), winner.net);
+                        if (amount > 0) moves.push({ from: loser.name, to: winner.name, amount: Math.round(amount) });
+                        loser.net += amount; winner.net -= amount;
+                        if (Math.abs(loser.net) < 1) lIdx++; if (Math.abs(winner.net) < 1) wIdx++;
+                    }
+                    return moves;
+                });
+
+                return {
+                    currentTab, tabs, grabDice, rollGrabDice, isValidDice, grabInstruction, isTargetPile,
+                    diceCount, rolledDice, isRollingDice, rollIndependentDice, diceTotalSum,
+                    scoreData, scenarioItems, structureItems, dragonTiles, windTiles, cycleWind, changeStreak, changeFlowers, finalTai, resetScoring,
+                    settle, settleDiff, isSettleBalanced, hasResult, paymentInstructions
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
